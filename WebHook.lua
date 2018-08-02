@@ -1,15 +1,21 @@
-----------------------------------------------------------
---package.path = package.path..";./modules/?.lua"
+----Library
+package.path = package.path..";./lua/?.lua"
 local socket = require("socket")
 local http = require("socket.http")
 local https = require("ssl.https")
 local ltn12 = require("ltn12")
 local json = require("JSON")
+----Init
 local u = require("utils")
-timestamp = 0
+name = 'Dynmap to Discord'
+version = '1.0'
+timestamp = 420000
+playerCount = 0
+wait = 5
+--err_prefix = function() return os.date('[%H:%M:%S]') end
 
 config = u.loadConfig('config.lua')
---functions
+----Functions
 function sendRequest(payload)
     local path = config.webhook
     --local payload = [[{"content":"gg"}]]
@@ -31,93 +37,92 @@ end
 function getWorld()
     --local world = http.request(file) 
     --local status, err = pcall(function () error({code=121}) end)
-    return json:decode(http.request(config.file))
+    local status, res = pcall(function () return json:decode(http.request(config.file)) end)
+    if status then 
+        return res
+    else
+        print(os.date('[%H:%M:%S]')..res)
+    end
+    --return json:decode(http.request(config.file))
 end
 function getUUID(name)
-    return json:decode(https.request('https://api.mojang.com/users/profiles/minecraft/'..name)).id
+    local status, res = pcall(function () return json:decode(https.request('https://api.mojang.com/users/profiles/minecraft/'..name)).id end)
+    if status then 
+      return res
+    else
+      print(os.date('[%H:%M:%S]')..res)
+      return '00000000-0000-0000-0000-000000000000'
+    end
 end
-function sendMessage(_type,_event) --playerquit playerjoin
-    local message = {}
-
+function sendMessage(_type,event) --chat playerquit playerjoin info
+    local player = ""
+    local player_icon = ""
+    local title = ""
+    local description = ""
+    local color = 0xffffff
+    local time = os.date('[%H:%M:%S] ',tostring(event.timestamp):sub(1,-4))--Lua timestamp in seconds
     if _type == 'chat' then 
-        player = event.account:gsub('[&].','')
+        if event.source == 'player' then
+            player = event.account:gsub('[&].','')
+            description = time..event.message
+            player_icon = "https://crafatar.com/avatars/"..getUUID(player:gsub('%[.+%]',''))   --Steve 00000000-0000-0000-0000-000000000000 Alex ..0001
+        else return end
+    elseif _type == 'playerjoin' then
+        local player = event.account:gsub('[&].','')
+        description = 'Игрок '..player..' вошёл на сервер'
+    elseif _type == 'playerquit' then
+        local player = event.account:gsub('[&].','')
+        description = 'Игрок '..player..' вышел с сервера'
+    elseif _type == 'info' then
         description = event.message
-    end
-    if _type == 'playerjoin' then
-        player = event.account:gsub('[&].','')
-        description = player
-    end
-    if _type == 'playerquit' then
-
-    end
-
-    message.content = ""
-    message.username = ""
-    message.avatar_url = ""
+        title = event.title
+    else return end
+    
+    local message = {}
+    --message.content = ""
+    --message.username = ""
+    --message.avatar_url = ""
     message.embeds = {{
         author = {
             name = player,
             url = "",
-            icon_url = "https://crafatar.com/avatars/"..getUUID(player:gsub('%[.+%]',''))   --Steve 00000000-0000-0000-0000-000000000000 Alex ..0001
+            icon_url = player_icon
         },
-        title = os.date('[%H:%M:%S] ',tostring(event.timestamp):sub(1,-4)),--Lua timestamp in seconds 
-        description = event.message
+        title = title,
+        description = description,
+        color = color
     }}
     
     payload = json:encode(message)
     sendRequest(payload)
 end
-function log()
+function CheckDynmap()
     local world = getWorld()
+    if not world then return end
     for _,event in pairs(world.updates) do
-        if event.timestamp > timestamp then
-            if event.type == 'chat' and event.timestamp > timestamp then 
-                if event.source == 'player' then
-                    local player = event.account:gsub('[&].','')
-                    message = {}
-                    message.content = ""
-                    message.username = ""
-                    message.avatar_url = ""
-                    message.embeds = {{
-                        author = {
-                            name = player,
-                            url = "",
-                            icon_url = "https://crafatar.com/avatars/"..getUUID(player:gsub('%[.+%]',''))
-                        },
-                        title = os.date('[%H:%M:%S] ',tostring(event.timestamp):sub(1,-4)),--Lua timestamp in seconds 
-                        description = event.message
-                    }}
-                    
-                    payload = json:encode(message)
-                    sendRequest(payload)
-                end
-            end
+        if event.timestamp > timestamp and event.type ~= 'tile' then
+            sendMessage(event.type,event)
         end
     end
+    if #world.players ~= playerCount then
+        playerCount = #world.players
+        if #world.players > 0 then
+            local event = {players = {}}
+            for k,v in pairs(world.players) do
+                event.players[k] = v.account
+            end
+            event.message = 'Список игроков: '..table.concat(event.players,', ')..'.'
+            event.timestamp = world.timestamp
+            sendMessage('info',event)
+        end
+    end    
     timestamp = world.timestamp
 end
-function list()
-    world = getWorld()
-    io.write('Список игроков: ')
-    for k,v in pairs(world.players) do
-        io.write(v.account,' ')
-    end
-    io.write('\n')
-end
---MAIN
-------------------------------------------------------------------------------------------------------------------
+----Main
 --print(getUUID('Virenbar))
----[[
-list()
+local event = {title = name, message = 'Версия: '..version, timestamp=timestamp}
+sendMessage('info',event)
 while true do
-    log()
-    socket.sleep(5)
+    CheckDynmap()
+    socket.sleep(wait)
 end
---]]
---print(os.date("!%Y-%m-%dT%TZ"))
---print(os.date('[%H:%M:%S]',tostring(1519828431804):sub(1,-4)))
---print(os.date('%Y-%m-%dT%H:%M:%SZ',tostring(1519828431804):sub(1,-4)))
---sendRequest(payload)
---webhook = https.request("http://discordapp.com/api/webhooks/")
---webhook = json:decode(webhook)
---printtable(webhook)
