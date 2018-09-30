@@ -10,10 +10,11 @@ local u = require("utils")
 name = 'Dynmap to Discord'
 version = '1.0'
 timestamp = 420000
-playerCount = 0
+--playerCount = 0
+P_online = {}
 wait = 5
 --err_prefix = function() return os.date('[%H:%M:%S]') end
-
+--event ttl 30s
 config = u.loadConfig('config.lua')
 ----Functions
 function sendRequest(payload)
@@ -67,12 +68,6 @@ function sendMessage(_type,event) --chat playerquit playerjoin info
             description = time..event.message
             player_icon = "https://crafatar.com/avatars/"..getUUID(player:gsub('%[.+%]',''))   --Steve 00000000-0000-0000-0000-000000000000 Alex ..0001
         else return end
-    elseif _type == 'playerjoin' then
-        local player = event.account:gsub('[&].','')
-        description = 'Игрок '..player..' вошёл на сервер'
-    elseif _type == 'playerquit' then
-        local player = event.account:gsub('[&].','')
-        description = 'Игрок '..player..' вышел с сервера'
     elseif _type == 'info' then
         description = event.message
         title = event.title
@@ -97,32 +92,47 @@ function sendMessage(_type,event) --chat playerquit playerjoin info
     sendRequest(payload)
 end
 function CheckDynmap()
+    local P_join = {}
+    local P_quit = {}
+    --local P_online = {}
     local world = getWorld()
     if not world then return end
     for _,event in pairs(world.updates) do
         if event.timestamp > timestamp and event.type ~= 'tile' then
-            sendMessage(event.type,event)
+            if event.type == 'chat' then 
+                sendMessage(event.type,event)
+            elseif event.type == 'playerjoin' then
+                P_join[#P_join+1] = '__'..event.account..'__'
+            elseif event.type == 'playerquit' then
+                P_quit[#P_quit+1] = '~~'..event.account..'~~'
+            end
         end
     end
-    if #world.players ~= playerCount then
-        playerCount = #world.players
-        if #world.players > 0 then
-            local event = {players = {}}
-            for k,v in pairs(world.players) do
-                event.players[k] = v.account
-            end
-            event.message = 'Список игроков: '..table.concat(event.players,', ')..'.'
-            event.timestamp = world.timestamp
-            sendMessage('info',event)
+    if #world.players ~= #P_online or #P_join>0 or #P_quit>0 then
+        --playerCount = #world.players
+        if #P_join==0 and #P_quit==0 then
+        --WAT
         end
+        P_online = {}
+        for k,v in pairs(world.players) do
+            P_online[k] = v.account
+        end
+        
+        local event = {}
+        event.message = 'Список игроков: '..table.concat(P_join,' ')..' '.. table.concat(P_online,' ')..' '..table.concat(P_quit,' ')..'.'
+        event.timestamp = world.timestamp
+        sendMessage('info',event)
     end    
     timestamp = world.timestamp
 end
 ----Main
---print(getUUID('Virenbar))
+---[[
 local event = {title = name, message = 'Версия: '..version, timestamp=timestamp}
 sendMessage('info',event)
 while true do
+    local time = socket.gettime()
     CheckDynmap()
+    print(socket.gettime()-time)
     socket.sleep(wait)
 end
+--]]

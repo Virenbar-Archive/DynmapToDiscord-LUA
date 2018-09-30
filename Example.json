@@ -1,6 +1,3 @@
-// 20180720002655
-// http://178.33.4.202:65000/up/world/ebs/
-
 {
   "currentcount": 0,
   "hasStorm": false,
@@ -14,53 +11,13 @@
     {
       "type": "tile",
       "name": "t/-1_0/-10_6.png",
-      "timestamp": 1532028383450
-    },
-    {
-      "type": "tile",
-      "name": "t/-1_-1/-2_-2.png",
-      "timestamp": 1532028386440
-    },
-    {
-      "type": "tile",
-      "name": "flat/-1_-1/z_-4_-2.png",
-      "timestamp": 1532028398906
-    },
-    {
-      "type": "tile",
-      "name": "t/-1_0/z_-10_6.png",
-      "timestamp": 1532028398919
-    },
-    {
-      "type": "tile",
-      "name": "t/-1_-1/z_-2_-2.png",
-      "timestamp": 1532028398934
-    },
-    {
-      "type": "tile",
-      "name": "t/-1_0/zzz_-16_8.png",
-      "timestamp": 1532028398971
-    },
-    {
-      "type": "tile",
-      "name": "t/-1_0/zzz_-8_0.png",
-      "timestamp": 1532028398998
-    },
-    {
-      "type": "tile",
-      "name": "t/-1_0/zzzzz_-32_0.png",
-      "timestamp": 1532028399021
-    },
-    {
-      "type": "tile",
-      "name": "t/-1_1/zzzzz_-32_32.png",
-      "timestamp": 1532028399054
+      "timestamp": 10
     },
     {
       "type": "playerjoin",
       "playerName": "Virenbar",
       "account": "Virenbar",
-      "timestamp": 1532028401011
+      "timestamp": 11
     },
     {
       "type": "chat",
@@ -69,14 +26,23 @@
       "message": "test",
       "account": "Virenbar",
       "channel": "",
-      "timestamp": 1532028409621
+      "timestamp": 12
     },
     {
       "type": "playerquit",
       "playerName": "Virenbar",
       "account": "Virenbar",
-      "timestamp": 1532028411788
+      "timestamp": 13
     }
+    {
+      "type": "chat",
+      "source": "plugin",
+      "playerName": "",
+      "message": "[Server]Ивент \"Охотники на дракона\"начался!",
+      "account": "",
+      "channel": "",
+      "timestamp": 14
+    },
   ],
-  "timestamp": 1532028412456
+  "timestamp": 50
 }
