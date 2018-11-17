@@ -1,4 +1,5 @@
 local utils = require("utils")
+local json = require("JSON")
 --[[
 arr = {{"one","two",{tr = "three"}},"four","five"}
 utils.printtable(arr)
@@ -34,3 +35,19 @@ print(name:gsub('%s%_',' \\_'):gsub('%_%s','\\_ '))
 arr = {'LLlTypMoBuk','Abhidharma','Mr_DD'}
 table.sort(arr)
 print(table.concat(arr,', '))
+
+local mcq = require("mcquery.ping")
+local server, err = mcq:new('minecrafting.ru')
+
+if not server then
+    print(err)
+    return
+end
+
+local data, err = server:ping()
+
+if not data then
+    print(err)
+    return
+end
+utils.printtable(json:decode(data))

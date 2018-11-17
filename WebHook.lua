@@ -5,6 +5,7 @@ local http = require("socket.http")
 local https = require("ssl.https")
 local ltn12 = require("ltn12")
 local json = require("JSON")
+local mcq = require("mcquery.ping")
 ----Init
 local u = require("utils")
 name = 'Dynmap to Discord'
@@ -16,6 +17,7 @@ wait = 5
 --err_prefix = function() return os.date('[%H:%M:%S]') end
 --event ttl 30s
 config = u.loadConfig('config.lua')
+locale = u.loadConfig('locale.lua')
 ----Functions
 function sendRequest(payload)
     local path = config.webhook
@@ -34,6 +36,14 @@ function sendRequest(payload)
         sink = ltn12.sink.table(response_body)
     }
     print(os.date('[%H:%M:%S]')..'Response: = ' .. table.concat(response_body) .. ', code = ' .. code .. ', status = ' .. status)
+end
+function getInfo()
+    local json, err = server:ping()
+    if not json then
+        print(err)
+        return
+    end
+    print(json)
 end
 function getWorld()
     --local world = http.request(file) 
@@ -66,7 +76,7 @@ function sendMessage(_type,event) --chat playerquit playerjoin info
         if event.source == 'player' then
             player = event.account:gsub('[&].','')
             description = time..event.message
-            player_icon = "https://crafatar.com/avatars/"..getUUID(player:gsub('%[.+%]',''))   --Steve 00000000-0000-0000-0000-000000000000 Alex ..0001
+            player_icon = "https://crafatar.com/avatars/"..getUUID(player:gsub('%[.+%]',''))   --Steve 00000000-0000-0000-0000-000000000000 Alex ..0001 uuid?overlay
         else return end
     elseif _type == 'info' then
         description = event.message
@@ -90,6 +100,9 @@ function sendMessage(_type,event) --chat playerquit playerjoin info
     
     payload = json:encode(message)
     sendRequest(payload)
+end
+function CheckServer()
+    getInfo
 end
 function CheckDynmap()
     local P_join = {}
@@ -129,6 +142,11 @@ end
 ---[[
 local event = {title = name, message = 'Версия: '..version, timestamp=timestamp}
 sendMessage('info',event)
+local server, err = mcq:new(config.ip)
+if not server then
+    print(err)
+    return
+end
 while true do
     local time = socket.gettime()
     CheckDynmap()
