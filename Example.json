@@ -28,6 +28,15 @@
       "channel": "",
       "timestamp": 12
     },
+    { 
+      "type": "chat",
+      "source": "player", 
+      "playerName": "<span style='color:#000AA'>[M]<span style='color:#FFFFFF'><span style='color:#FFFFFF'>bezumeth</span></span></span>", 
+      "message": "Cnacm6o, Cepeep :-)", 
+      "account": "&l[M]&f&fbezumeth", 
+      "channel": "", 
+      "timestamp": 15
+    },
     {
       "type": "playerquit",
       "playerName": "Virenbar",
@@ -43,6 +52,15 @@
       "channel": "",
       "timestamp": 14
     },
+    {
+      "type": "chat",
+      "source": "web",
+      "playerName": "Virenbar",
+      "message": "123",
+      "account": null,
+      "channel": null,
+      "timestamp": 1548148004141
+    }
   ],
   "timestamp": 50
 }

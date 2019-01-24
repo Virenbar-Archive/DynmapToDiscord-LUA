@@ -9,10 +9,10 @@ local mcq = require("mcquery.ping")
 ----Init
 local u = require("utils")
 name = 'Dynmap to Discord'
-version = '1.0'
+version = '2.0'
 timestamp = 420000
---playerCount = 0
-P_online = {}
+playersPrev = {}
+playersHash = ""
 wait = 5
 --err_prefix = function() return os.date('[%H:%M:%S]') end
 --event ttl 30s
@@ -35,24 +35,31 @@ function sendRequest(payload)
         source = ltn12.source.string(payload),
         sink = ltn12.sink.table(response_body)
     }
-    print(os.date('[%H:%M:%S]')..'Response: = ' .. table.concat(response_body) .. ', code = ' .. code .. ', status = ' .. status)
+    if code ~= 204 then
+        u.log('Response: = ' .. table.concat(response_body) .. ', code = ' .. code .. ', status = ' .. status)
+    end
 end
-function getInfo()
-    local json, err = server:ping()
-    if not json then
-        print(err)
+function getServerInfo()
+    local server, err = mcq:new(config.host,config.port)
+    if not server then
+        u.log(err)
+        return 
+    end
+    local info, err = server:ping()
+    if not info then
+        u.log(err)
         return
     end
-    print(json)
+    return json:decode(info)
 end
-function getWorld()
+function getDynmapInfo()
     --local world = http.request(file) 
     --local status, err = pcall(function () error({code=121}) end)
     local status, res = pcall(function () return json:decode(http.request(config.file)) end)
     if status then 
         return res
     else
-        print(os.date('[%H:%M:%S]')..res)
+        u.log(res)
     end
     --return json:decode(http.request(config.file))
 end
@@ -61,96 +68,151 @@ function getUUID(name)
     if status then 
       return res
     else
-      print(os.date('[%H:%M:%S]')..res)
+      u.log(res)
       return '00000000-0000-0000-0000-000000000000'
     end
 end
-function sendMessage(_type,event) --chat playerquit playerjoin info
-    local player = ""
-    local player_icon = ""
-    local title = ""
-    local description = ""
-    local color = 0xffffff
-    local time = os.date('[%H:%M:%S] ',tostring(event.timestamp):sub(1,-4))--Lua timestamp in seconds
-    if _type == 'chat' then 
-        if event.source == 'player' then
-            player = event.account:gsub('[&].','')
-            description = time..event.message
-            player_icon = "https://crafatar.com/avatars/"..getUUID(player:gsub('%[.+%]',''))   --Steve 00000000-0000-0000-0000-000000000000 Alex ..0001 uuid?overlay
-        else return end
-    elseif _type == 'info' then
-        description = event.message
-        title = event.title
-    else return end
-    
+function sendMessage(msg)
     local message = {}
     --message.content = ""
     --message.username = ""
     --message.avatar_url = ""
     message.embeds = {{
         author = {
-            name = player,
+            name = msg.name,
             url = "",
-            icon_url = player_icon
+            icon_url = msg.icon
         },
-        title = title,
-        description = description,
-        color = color
+        title = msg.title,
+        description = msg.message,
+        color = msg.color,
+        footer = {
+            icon_url = msg.footer_icon,
+            text = msg.footer
+        },
+        timestamp= msg.timestamp or ""
     }}
-    
     payload = json:encode(message)
     sendRequest(payload)
 end
-function CheckServer()
-    getInfo
+function nodash(str)
+    --Underscore escape
+    str = str:gsub('^%_','\\_'):gsub('%_$','\\_')
+    return str
 end
-function CheckDynmap()
-    local P_join = {}
-    local P_quit = {}
-    --local P_online = {}
-    local world = getWorld()
-    if not world then return end
-    for _,event in pairs(world.updates) do
-        if event.timestamp > timestamp and event.type ~= 'tile' then
-            if event.type == 'chat' then 
-                sendMessage(event.type,event)
-            elseif event.type == 'playerjoin' then
-                P_join[#P_join+1] = '__'..event.account..'__'
-            elseif event.type == 'playerquit' then
-                P_quit[#P_quit+1] = '~~'..event.account..'~~'
-            end
+function CheckServer()
+    --serverInfo = getServerInfo()
+    if not serverInfo then return end
+    --Make array of players
+    local players = {}
+    for _,player in pairs(serverInfo.players.sample or {}) do
+        table.insert(players,player.name)
+    end
+    table.sort(players)
+    --Check for player list change
+    playersHashNew = table.concat(players)
+    if playersHash == playersHashNew then return end
+    
+    playersHash = playersHashNew
+    local playersOnline,playersList = {},{}
+    for _,player in ipairs(players) do
+        if playersPrev[player] then 
+            playersOnline[player] = {}
+            playersPrev[player] = nil
+            table.insert(playersList,nodash(player))
+        else 
+            playersOnline[player] = {}
+            table.insert(playersList,1,'__'..nodash(player)..'__')
         end
     end
-    if #world.players ~= #P_online or #P_join>0 or #P_quit>0 then
-        --playerCount = #world.players
-        if #P_join==0 and #P_quit==0 then
-        --WAT
+    for player,_ in pairs(playersPrev) do
+        table.insert(playersList,'~~'..nodash(player)..'~~')
+    end
+    --print(table.concat(playersList,' '))
+    sendMessage
+    {
+        --title = 'Список игроков', 
+        message = table.concat(playersList,' '),
+        color = 0xffffff,
+        footer = 'Список игроков',
+        timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ')
+    }
+    playersPrev = playersOnline
+end
+function CheckDynmap()
+    --local dynmapInfo = getDynmapInfo()
+    if not dynmapInfo then return end
+    for _,event in pairs(dynmapInfo.updates) do
+        if event.timestamp > timestamp and event.type ~= 'tile' then
+            if event.type == 'chat' then
+                --local time = os.date('[%H:%M:%S] ',tostring(event.timestamp):sub(1,-4))--Lua timestamp in seconds
+                local time = os.date('!%Y-%m-%dT%H:%M:%SZ',tostring(event.timestamp):sub(1,-4))--Lua timestamp in seconds
+                if event.source == 'player' then
+                    local player = event.account:gsub('[&].','')
+                    sendMessage
+                    {
+                        --name = player,
+                        --icon = 'https://crafatar.com/avatars/'..getUUID(player:gsub('%[.-%]',''))..'?overlay',   --Steve 00000000-0000-0000-0000-000000000000 Alex ..0001
+                        message = event.message,
+                        color = event.playerName:match("'color:#(.-)'") or 0xffffff,
+                        footer_icon = 'https://crafatar.com/avatars/'..getUUID(player:gsub('%[.-%]',''))..'?overlay',
+                        footer = player,
+                        timestamp = time
+                    }
+                elseif event.source == 'plugin' then
+                    sendMessage
+                    {
+                        --name = 'Server',
+                        --icon = serverInfo.favicon,
+                        message = time..event.message,
+                        color = 0xFF55FF,
+                        footer_icon= serverInfo.favicon,
+                        footer = 'Server',
+                        timestamp = time
+                    }
+                elseif event.source == 'web' then
+                    sendMessage
+                    {
+                        --name = '[Web]'..event.playerName,
+                        message = time..event.message,
+                        color = 0xffffff,
+                        footer = '[Web]'..event.playerName,
+                        timestamp = time
+                    }
+                else return end
+            end
         end
-        P_online = {}
-        for k,v in pairs(world.players) do
-            P_online[k] = v.account
-        end
-        
-        local event = {}
-        event.message = 'Список игроков: '..table.concat(P_join,' ')..' '.. table.concat(P_online,' ')..' '..table.concat(P_quit,' ')..'.'
-        event.timestamp = world.timestamp
-        sendMessage('info',event)
-    end    
-    timestamp = world.timestamp
+    end  
+    timestamp = dynmapInfo.timestamp
+end
+function Init()
+    serverInfo = getServerInfo()
+    local players = {}
+    for _,player in pairs(serverInfo.players.sample or {}) do
+        table.insert(players,player.name)
+    end
+    table.sort(players)
+    --playersHash = table.concat(players)
+    for _,player in ipairs(players) do 
+        playersPrev[player] = {}
+    end
+    sendMessage
+    {
+        title = name, 
+        message = 'Version: '..version, 
+        timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ')
+    }
+    u.log('Ready')
 end
 ----Main
 ---[[
-local event = {title = name, message = 'Версия: '..version, timestamp=timestamp}
-sendMessage('info',event)
-local server, err = mcq:new(config.ip)
-if not server then
-    print(err)
-    return
-end
+Init()
 while true do
-    local time = socket.gettime()
+    --local time = socket.gettime()
+    serverInfo,dynmapInfo = getServerInfo(),getDynmapInfo()
+    CheckServer()
     CheckDynmap()
-    print(socket.gettime()-time)
+    --print(socket.gettime()-time)
     socket.sleep(wait)
 end
 --]]

@@ -30,24 +30,28 @@ while true do
     socket.sleep(1)
 end
 --]]
-name = ' _hui, fdh_dhfd, gdfgd_ ,'
-print(name:gsub('%s%_',' \\_'):gsub('%_%s','\\_ '))
-arr = {'LLlTypMoBuk','Abhidharma','Mr_DD'}
-table.sort(arr)
-print(table.concat(arr,', '))
-
+--[[
 local mcq = require("mcquery.ping")
 local server, err = mcq:new('minecrafting.ru')
-
 if not server then
     print(err)
     return
 end
-
 local data, err = server:ping()
-
 if not data then
     print(err)
     return
 end
+--utils.printtable(json:decode(data).players.sample)
 utils.printtable(json:decode(data))
+--]]
+name = '_hui, fdh_dhfd, gdfgd_'
+print(name:gsub('^%_','\\_'):gsub('%_$','\\_'))
+arr = {'LLlTypMoBuk','Abhidharma','Mr_DD'}
+table.sort(arr)
+print(table.concat(arr,', '))
+
+--text = "<span style='color:#0000AA'>[M]<span style='color:#FFFFFF'><span style='color:#FFFFFF'>bezumeth</span></span></span>" 
+--text = "Virenbar"
+--print(text:match("'color:#(.-)'"))
+print(os.date('%Y-%m-%dT%H:%M:%SZ'))

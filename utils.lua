@@ -37,9 +37,12 @@ function u.saveConfig()
     --
 end
 function u.loadConfig(_name)
-    config = {}
+    local config = {}
     local f,err = loadfile(_name, "t", config)
     if f then f() else print(err) end
     return config
+end
+function u.log(message)
+    print(os.date('[%H:%M:%S]')..message)
 end
 return u
