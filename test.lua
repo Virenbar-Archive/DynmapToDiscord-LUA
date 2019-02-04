@@ -55,3 +55,6 @@ print(table.concat(arr,', '))
 --text = "Virenbar"
 --print(text:match("'color:#(.-)'"))
 print(os.date('%Y-%m-%dT%H:%M:%SZ'))
+
+playerName="<span style=\"color:#555555\">[A]<span style=\"color:#ffffff\"><span style=\"color:#ffffff\">MariaO2</span></span></span>"
+print(tonumber(playerName:match("\"color:#(.-)\""),16) or 0xffffff)

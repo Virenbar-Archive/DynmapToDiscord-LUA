@@ -9,7 +9,7 @@ local mcq = require("mcquery.ping")
 ----Init
 local u = require("utils")
 name = 'Dynmap to Discord'
-version = '2.0'
+version = '2.1'
 timestamp = 420000
 playersPrev = {}
 playersHash = ""
@@ -63,6 +63,20 @@ function getDynmapInfo()
     end
     --return json:decode(http.request(config.file))
 end
+function getPlayerList()
+    local players = {}
+    while #players<serverInfo.players.online do
+        serverInfo = getServerInfo()
+        if not serverInfo then return end
+        for _,player in pairs(serverInfo.players.sample or {}) do
+            if not u.isTableItem(players,player.name) then
+                table.insert(players,player.name)
+            end
+        end
+    end
+    table.sort(players)
+    return players
+end
 function getUUID(name)
     local status, res = pcall(function () return json:decode(https.request('https://api.mojang.com/users/profiles/minecraft/'..name)).id end)
     if status then 
@@ -101,19 +115,19 @@ function nodash(str)
     return str
 end
 function CheckServer()
-    --serverInfo = getServerInfo()
+    serverInfo = getServerInfo()
     if not serverInfo then return end
-    --Make array of players
-    local players = {}
-    for _,player in pairs(serverInfo.players.sample or {}) do
-        table.insert(players,player.name)
+    if not serverInfo.players then 
+        players = {}
+    else 
+        players = getPlayerList()
     end
-    table.sort(players)
+    if not players then return end
     --Check for player list change
     playersHashNew = table.concat(players)
-    if playersHash == playersHashNew then return end
-    
+    if playersHash == playersHashNew then return end    
     playersHash = playersHashNew
+    
     local playersOnline,playersList = {},{}
     for _,player in ipairs(players) do
         if playersPrev[player] then 
@@ -141,6 +155,7 @@ function CheckServer()
 end
 function CheckDynmap()
     --local dynmapInfo = getDynmapInfo()
+    dynmapInfo = getDynmapInfo()
     if not dynmapInfo then return end
     for _,event in pairs(dynmapInfo.updates) do
         if event.timestamp > timestamp and event.type ~= 'tile' then
@@ -154,27 +169,29 @@ function CheckDynmap()
                         --name = player,
                         --icon = 'https://crafatar.com/avatars/'..getUUID(player:gsub('%[.-%]',''))..'?overlay',   --Steve 00000000-0000-0000-0000-000000000000 Alex ..0001
                         message = event.message,
-                        color = event.playerName:match("'color:#(.-)'") or 0xffffff,
+                        color = tonumber(event.playerName:match("\"color:#(.-)\""),16) or 0xffffff,
                         footer_icon = 'https://crafatar.com/avatars/'..getUUID(player:gsub('%[.-%]',''))..'?overlay',
                         footer = player,
                         timestamp = time
                     }
                 elseif event.source == 'plugin' then
-                    sendMessage
-                    {
-                        --name = 'Server',
-                        --icon = serverInfo.favicon,
-                        message = time..event.message,
-                        color = 0xFF55FF,
-                        footer_icon= serverInfo.favicon,
-                        footer = 'Server',
-                        timestamp = time
-                    }
+                    if u.startsWith(event.message,'[Server]') then
+                        sendMessage
+                        {
+                            --name = 'Server',
+                            --icon = serverInfo.favicon,
+                            message = event.message:sub(8),
+                            color = 0xFF55FF,
+                            --footer_icon= '',
+                            footer = 'Server',
+                            timestamp = time
+                        }
+                    end
                 elseif event.source == 'web' then
                     sendMessage
                     {
                         --name = '[Web]'..event.playerName,
-                        message = time..event.message,
+                        message = event.message,
                         color = 0xffffff,
                         footer = '[Web]'..event.playerName,
                         timestamp = time
@@ -187,11 +204,7 @@ function CheckDynmap()
 end
 function Init()
     serverInfo = getServerInfo()
-    local players = {}
-    for _,player in pairs(serverInfo.players.sample or {}) do
-        table.insert(players,player.name)
-    end
-    table.sort(players)
+    local players = getPlayerList()
     --playersHash = table.concat(players)
     for _,player in ipairs(players) do 
         playersPrev[player] = {}
@@ -209,7 +222,6 @@ end
 Init()
 while true do
     --local time = socket.gettime()
-    serverInfo,dynmapInfo = getServerInfo(),getDynmapInfo()
     CheckServer()
     CheckDynmap()
     --print(socket.gettime()-time)
