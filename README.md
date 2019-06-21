@@ -1,3 +1,5 @@
+# [New Version on Node.JS](https://github.com/Virenbar/DynmapToDiscordJS)
+
 # DynmapToDiscord
 ## Installation (CentOS)
 1. Install lua
